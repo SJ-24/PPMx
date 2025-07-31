@@ -1,0 +1,15 @@
+# R files to ignore
+.Rhistory
+.RData
+.Rproj.user/
+
+# Output or build files
+*.tar.gz
+*.Rcheck/
+*.html
+*.pdf
+
+# Secrets or temporary files
+.DS_Store
+*.log
+AEPPMx.Rproj
