@@ -7,6 +7,6 @@ This R package implements a Bayesian nonparametric model for aggregate adverse e
 # R Package tutorial
 See the two example files:
 
-1. **example_blind.R**
+1. **inst/examples/example_blind.R**
 
-2. **example_unblind.R**
+2. **inst/examples/example_unblind.R**

@@ -1,6 +1,7 @@
 library(AEPPMx)
 # Load unblinded data
-indat <- read.csv("./data_unblind.csv")
+example_path <- system.file("extdata", "data_unblind.csv", package = "AEPPMx")
+indat <- read.csv(example_path)
 
 # Separate outcome and covariate data
 indat_outcome <- indat[, c("N", "T", "SAE")]
@@ -56,8 +57,8 @@ U <- length(t)
 y <- indat_outcome$SAE
 
 # Run MCMC sampler
-unblind_spls = MBR_MCMC(y, t, unblind_similarity_matrix, 
-                        M, m, 
+unblind_spls = MBR_MCMC(y, t, unblind_similarity_matrix,
+                        M, m,
                         n_burn = 1000,
                         n_iter = 11000,
                         proposal_sd,
