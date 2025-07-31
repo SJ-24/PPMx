@@ -1,0 +1,17 @@
+Package: AEPPMx
+Title: A covariate-dependent product partition model (PPMx) for aggregate adverse event (AE) monitoring across clinical trials
+Version: 0.1.1
+Authors@R: c(
+  person(given = "Shijie", family = "Yuan", email = "sj.yuan@utexas.edu", role = c("aut", "cre", "cph")),
+  person(given = "Peter", family = "Müller", email = "pmueller@math.utexas.edu", role = c("aut", "cph")),
+	person(given = "Yuan", family = "Ji", email = "YJi@health.bsd.uchicago.edu", role = c("aut", "cph")))
+Description: This R package implements a Bayesian nonparametric model for aggregate adverse event (AE) monitoring across clinical trials. The method leverages a covariate-dependent product partition model (PPMx) to integrate information from both historical and ongoing studies, accommodating data at varying levels of granularity—from individual-level covariates to study-level summaries. A novel pairwise similarity measure is used to guide the clustering of experimental units with similar covariate profiles, enhancing the precision of AE rate estimation. The framework supports blinded real-time safety monitoring with seamless transition to unblinded analyses when needed. Case studies and simulation tools are included to demonstrate safety signal detection and risk assessment under diverse trial scenarios.
+License: GPL (>= 3)
+Encoding: UTF-8
+Author: Shijie Yuan [aut, cre, cph],
+  Peter Müller [aut, cph],
+  Yuan Ji [aut, cph]
+Imports: 
+Suggests: 
+Config/testthat/edition: 3
+RoxygenNote: 7.3.2

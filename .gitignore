@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Rproj.user/
+*.Rproj
 
 # Output or build files
 *.tar.gz
@@ -12,4 +13,3 @@
 # Secrets or temporary files
 .DS_Store
 *.log
-AEPPMx.Rproj

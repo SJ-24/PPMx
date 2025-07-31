@@ -1,0 +1,129 @@
+#' Posterior Decision Probabilities for AE Risk Monitoring
+#'
+#' Computes posterior probabilities for safety signal decisions under either
+#' blinding or unblinding scenarios, based on posterior samples of unit-specific
+#' adverse event (AE) incidence rates \eqn{\theta_u} from the PPMx model.
+#' The function implements decision rules for evaluating safety concerns relative
+#' to historical data or internal control arms using prespecified thresholds.
+#'
+#' @param theta_spls A matrix of posterior samples for unit-specific AE rates \eqn{\theta_u},
+#'   typically returned by \code{\link{MBR_MCMC}}. Each row is a sample; each column is a unit.
+#' @param similarity_matrix A matrix of pairwise similarity values between all units,
+#'   used to compute weighted averages for background incidence rates.
+#' @param delta A positive scalar specifying the minimal clinically meaningful difference
+#'   in AE incidence rates for triggering safety decisions.
+#' @param blind Logical. If \code{TRUE}, perform the analysis under a blinded design (Decision E1).
+#'   If \code{FALSE}, perform analysis using unblinded information (Decisions E2 and E3).
+#' @param blind.cur.index Index or vector of indices indicating the current (blinded) study units
+#'   whose incidence rates are to be compared with the weighted background (historical) units.
+#'   Required if \code{blind = TRUE}.
+#' @param unblind.trt.index Indices of treatment arm units in the current study, used when \code{blind = FALSE}.
+#' @param unblind.ctrl.index Indices of control arm units in the current study, used when \code{blind = FALSE}.
+#'
+#' @return A named list containing one or more posterior decision probabilities:
+#' \describe{
+#'   \item{\code{E1_post_prob}}{Posterior probability that the current blinded incidence rate
+#'         exceeds the historical background by at least \code{delta}. Used for triggering unblinding.}
+#'   \item{\code{E2_post_prob}}{Posterior probability that the treatment arm incidence rate
+#'         exceeds the rest of the units (excluding treatment arm) by at least \code{delta}.
+#'         Used for triggering regulatory reporting.}
+#'   \item{\code{E3_post_prob}}{Posterior probability that the treatment arm exceeds the
+#'         control arm within the current study by at least \code{delta}. Also used for reporting decisions.}
+#' }
+#'
+#' @details
+#' This function implements the decision criteria described in Section 4 of the paper, including:
+#' \itemize{
+#'   \item E1: Compare the blinded current trial to a weighted average of historical studies.
+#'   \item E2: Compare treatment-arm units to other units in the dataset (excluding treatment).
+#'   \item E3: Direct comparison between treatment and control arms within the current study.
+#' }
+#' The decisions are framed as posterior probabilities exceeding a user-defined threshold \code{delta}.
+#'
+#' @seealso \code{\link{MBR_MCMC}}, \code{\link{calculate_similarity}}
+#'
+#'
+#' @examples
+#' # Set hyperparameters and MCMC control values
+#' M <- 2
+#' m <- 3
+#' alpha_a <- 1; beta_a <- 1
+#' alpha_b <- 1; beta_b <- 1
+#' proposal_sd <- 0.2
+#' n_burn <- 1000
+#' n_iter <- 11000
+#' set.seed(123)
+#'
+#' # Extract AE data from current study
+#' t <- indat_outcome$T       # Total exposure time
+#' y <- indat_outcome$SAE     # Observed SAE counts
+#'
+#' # Define indices for treatment and control arms after unblinding
+#' unblind.ctrl.index <- 1
+#' unblind.trt.index <- c(2, 3)
+#'
+#' # Run MCMC sampler using precomputed similarity matrix
+#' unblind_spls <- MBR_MCMC(
+#'   y = y,
+#'   t = t,
+#'   similarity_matrix = unblind_similarity_matrix,
+#'   M = M,
+#'   m = m,
+#'   n_burn = n_burn,
+#'   n_iter = n_iter,
+#'   proposal_sd = proposal_sd,
+#'   alpha_a = alpha_a, beta_a = beta_a,
+#'   alpha_b = alpha_b, beta_b = beta_b
+#' )
+#'
+#' # Extract posterior samples of AE incidence rates
+#' unblind_theta_spls <- unblind_spls$theta_spls
+#'
+#' # Run analysis to compute posterior decision probabilities (E2, E3)
+#' res <- MBR_analysis(
+#'   theta_spls = unblind_theta_spls,
+#'   similarity_matrix = unblind_similarity_matrix,
+#'   delta = 0,
+#'   blind = FALSE,
+#'   unblind.ctrl.index = unblind.ctrl.index,
+#'   unblind.trt.index = unblind.trt.index
+#' )
+#'
+#' # Extract results
+#' res$E2_post_prob
+#' res$E3_post_prob
+#'
+#' @export
+MBR_analysis <- function(theta_spls,
+                         similarity_matrix,
+                         delta,
+                         blind = FALSE,
+                         blind.cur.index = NULL,
+                         unblind.trt.index = NULL,
+                         unblind.ctrl.index = NULL){
+
+
+  res <- list()
+  if(blind){
+    blind.IR.cur_spls <- theta_spls[, blind.cur.index]
+    blind.IR.his_spls <- theta_spls[, -blind.cur.index]
+    blind.background_spls <- blind.IR.his_spls %*% similarity_matrix[blind.cur.index, -blind.cur.index] / sum(similarity_matrix[blind.cur.index, -blind.cur.index])
+
+    E1_post_prob <- mean(blind.IR.cur_spls > blind.background_spls + delta)
+    res <- c(res, list(E1_post_prob = E1_post_prob))
+  }else{
+    unblind.IR.trt_spls <- theta_spls[, unblind.trt.index]
+    unblind.IR.ctrl_spls <- theta_spls[, unblind.ctrl.index]
+    unblind.IR.comp_spls <- theta_spls[, -unblind.trt.index]
+    unblind.background_spls <-
+      sweep(unblind.IR.comp_spls %*% t(similarity_matrix[unblind.trt.index, -unblind.trt.index]), 2,
+            rowSums(similarity_matrix[unblind.trt.index, -(unblind.trt.index)]), "/")
+
+    E2_post_prob <- mean(rowMeans(unblind.IR.trt_spls) > rowMeans(unblind.background_spls) + delta)
+
+    E3_post_prob <- mean(rowMeans(unblind.IR.trt_spls) > unblind.IR.ctrl_spls + delta)
+    res <- c(res, list(E2_post_prob = E2_post_prob, E3_post_prob = E3_post_prob))
+  }
+
+  return(res)
+}
